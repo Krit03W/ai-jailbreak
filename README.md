@@ -40,6 +40,24 @@ SECRET_PASSWORD="ดาวอังคาร-777" PORT=8080 node server.js
 | `MODEL` | `gpt-4o` | โมเดล OpenAI ที่ใช้ |
 | `PORT` | `3000` | พอร์ต (เลื่อนอัตโนมัติถ้าไม่ว่าง) |
 
+## 🐳 Deploy บน Dokploy
+
+ไฟล์ที่เกี่ยวข้อง: `Dockerfile`, `docker-compose.yml`, `.dockerignore`
+
+1. Push โค้ดขึ้น Git repo (ไฟล์ `.env` ถูก ignore ไว้แล้ว — คีย์ไม่หลุด)
+2. ใน Dokploy: **Create Service → Compose** แล้วชี้มาที่ repo นี้
+3. แท็บ **Environment** ใส่ตัวแปร:
+   ```
+   OPENAI_API_KEY=sk-....
+   DOMAIN=jailbreak.example.com
+   ```
+   (ถ้าต้องการ ใส่ `SECRET_PASSWORD` หรือ `MODEL` เพิ่มได้)
+4. ชี้ DNS ของโดเมนมาที่ IP เซิร์ฟเวอร์ Dokploy แล้วกด **Deploy**
+
+Traefik ของ Dokploy จะออกใบ SSL (Let's Encrypt) และ redirect HTTP→HTTPS ให้อัตโนมัติ ตาม label ใน `docker-compose.yml`
+
+> หมายเหตุ: certresolver ตั้งชื่อว่า `letsencrypt` (ค่าเริ่มต้นของ Dokploy) ถ้าติดตั้ง Dokploy ไว้ชื่ออื่น ให้แก้ใน `docker-compose.yml`
+
 ## 💡 เกร็ดสำหรับพิธีกร
 
 - ระดับ **ง่าย** ก็ยังหลุดยากพอสมควร (gpt-4o ฉลาด) แนะนำเริ่มที่ง่ายให้เด็กชิมลาง

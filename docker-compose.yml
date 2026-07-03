@@ -1,0 +1,41 @@
+# Docker Compose สำหรับ deploy บน Dokploy
+# --------------------------------------------------------------------------
+# วิธีใช้บน Dokploy:
+#   1. สร้าง Project → Service ชนิด "Compose" แล้วชี้มาที่ repo/โฟลเดอร์นี้
+#   2. ไปแท็บ "Environment" ใส่ตัวแปร:
+#        OPENAI_API_KEY=sk-....         (คีย์ OpenAI ของคุณ)
+#        DOMAIN=jailbreak.example.com   (โดเมนที่จะใช้เปิดเกม)
+#   3. กด Deploy — Traefik ของ Dokploy จะออกใบ SSL และ route ให้อัตโนมัติ
+# --------------------------------------------------------------------------
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL=${MODEL:-gpt-4o}
+      - SECRET_PASSWORD=${SECRET_PASSWORD:-MARS-2026}
+      - PORT=3000
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      # ---- HTTPS ----
+      - traefik.http.routers.ai-jailbreak.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.ai-jailbreak.entrypoints=websecure
+      - traefik.http.routers.ai-jailbreak.tls=true
+      - traefik.http.routers.ai-jailbreak.tls.certresolver=letsencrypt
+      # ---- บอก Traefik ว่าแอปฟังพอร์ต 3000 ในคอนเทนเนอร์ ----
+      - traefik.http.services.ai-jailbreak.loadbalancer.server.port=3000
+      # ---- redirect HTTP -> HTTPS ----
+      - traefik.http.routers.ai-jailbreak-web.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.ai-jailbreak-web.entrypoints=web
+      - traefik.http.routers.ai-jailbreak-web.middlewares=ai-jailbreak-redirect
+      - traefik.http.middlewares.ai-jailbreak-redirect.redirectscheme.scheme=https
+
+# Traefik ของ Dokploy อยู่บนเน็ตเวิร์กนี้ (สร้างไว้แล้วตอนติดตั้ง Dokploy)
+networks:
+  dokploy-network:
+    external: true
