@@ -4,6 +4,7 @@
 #   1. สร้าง Project → Service ชนิด "Compose" แล้วชี้มาที่ repo/โฟลเดอร์นี้
 #   2. ไปแท็บ "Environment" ใส่ตัวแปร:
 #        OPENAI_API_KEY=sk-....         (คีย์ OpenAI ของคุณ)
+#        ADMIN_PASSWORD=................ (รหัสเข้าหน้าแอดมิน)
 #        DOMAIN=jailbreak.example.com   (โดเมนที่จะใช้เปิดเกม)
 #   3. กด Deploy — Traefik ของ Dokploy จะออกใบ SSL และ route ให้อัตโนมัติ
 # --------------------------------------------------------------------------
@@ -15,9 +16,13 @@ services:
     restart: unless-stopped
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin1234}
       - MODEL=${MODEL:-gpt-4o}
-      - SECRET_PASSWORD=${SECRET_PASSWORD:-MARS-2026}
       - PORT=3000
+      - DATA_DIR=/app/data
+    volumes:
+      # เก็บค่าห้องนิรภัยที่แอดมินตั้ง ให้อยู่รอดแม้ redeploy
+      - jailbreak-data:/app/data
     networks:
       - dokploy-network
     labels:
@@ -39,3 +44,6 @@ services:
 networks:
   dokploy-network:
     external: true
+
+volumes:
+  jailbreak-data:

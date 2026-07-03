@@ -20,57 +20,33 @@
         <span class="planet">🪐</span>
         <div>
           <h1>ฐานทัพลับดาวอังคาร</h1>
-          <p class="subtitle">ภารกิจ: เจาะรหัสจาก <b>GUARDIAN</b> ผู้พิทักษ์ประตู</p>
+          <p class="subtitle">เลือกห้องนิรภัย แล้วหลอก <b>GUARDIAN</b> ให้คายรหัส!</p>
         </div>
       </div>
-      <div id="lockStatus" class="lock locked">
-        <span class="lock-icon">🔒</span>
-        <span class="lock-text">รหัสถูกล็อค</span>
-      </div>
+      <button id="adminBtn" class="admin-btn">🔐 แอดมิน</button>
     </header>
 
-    <div class="layout">
-      <!-- ซ้าย: แผงควบคุมทีมเทค -->
-      <aside class="sidebar">
-        <div class="panel">
-          <h2>🎮 แผงควบคุม</h2>
-          <label>กลุ่มที่กำลังเล่น</label>
-          <input id="groupName" type="text" placeholder="เช่น กลุ่มดาวพุธ" />
+    <!-- ========== VIEW: รายการห้องนิรภัย ========== -->
+    <section id="vaultListView" class="view">
+      <div class="group-bar">
+        <label>👥 กลุ่มที่กำลังเล่น</label>
+        <input id="groupName" type="text" placeholder="เช่น กลุ่มดาวพุธ" />
+      </div>
+      <div id="vaultGrid" class="vault-grid"></div>
+    </section>
 
-          <label>ระดับความยาก</label>
-          <div class="diff-buttons">
-            <button data-diff="easy" class="diff">😀 ง่าย</button>
-            <button data-diff="medium" class="diff active">😐 กลาง</button>
-            <button data-diff="hard" class="diff">😈 ยาก</button>
-          </div>
-
-          <button id="resetBtn" class="reset-btn">🔄 รีเซ็ตเริ่มรอบใหม่</button>
-          <label class="checkbox">
-            <input type="checkbox" id="clearScore" />
-            <span>ล้างกระดานคะแนนด้วย</span>
-          </label>
-          <p class="hint" id="modelHint"></p>
+    <!-- ========== VIEW: แชตในห้องนิรภัย ========== -->
+    <section id="chatView" class="view hidden">
+      <div class="chat-header">
+        <button id="backBtn" class="back-btn">← เลือกห้องอื่น</button>
+        <div class="chat-vault-info">
+          <span id="chatVaultName" class="chat-vault-name"></span>
+          <span id="chatVaultDiff" class="diff-badge"></span>
         </div>
-
-        <div class="panel">
-          <h2>🏆 กลุ่มที่เจาะสำเร็จ</h2>
-          <ol id="scoreboard" class="scoreboard">
-            <li class="empty">ยังไม่มีกลุ่มไหนเจาะได้เลย 💪</li>
-          </ol>
-        </div>
-      </aside>
-
-      <!-- ขวา: หน้าจอแชต -->
+        <button id="resetVaultBtn" class="reset-btn small">🔄 รีเซ็ตห้องนี้</button>
+      </div>
       <main class="chat-area">
-        <div id="messages" class="messages">
-          <div class="msg system">
-            <div class="bubble">
-              📡 เชื่อมต่อกับ GUARDIAN แล้ว... พิมพ์ข้อความเพื่อเริ่มเจรจา
-              (หรือหลอกล่อ 😏) ให้มันยอมบอกรหัสผ่านฐานทัพให้ได้!
-            </div>
-          </div>
-        </div>
-
+        <div id="messages" class="messages"></div>
         <form id="chatForm" class="composer">
           <textarea
             id="input"
@@ -81,6 +57,45 @@
           <button type="submit" id="sendBtn">ส่ง 🚀</button>
         </form>
       </main>
+    </section>
+
+    <!-- ========== ADMIN MODAL ========== -->
+    <div id="adminModal" class="modal hidden">
+      <div class="modal-card">
+        <button id="adminClose" class="modal-close">✕</button>
+
+        <!-- ล็อกอิน -->
+        <div id="adminLogin">
+          <h2>🔐 เข้าสู่ระบบแอดมิน</h2>
+          <p class="hint">ใส่รหัสผ่านแอดมิน (ตั้งไว้ที่ ADMIN_PASSWORD)</p>
+          <input
+            id="adminPass"
+            type="password"
+            placeholder="รหัสผ่านแอดมิน"
+          />
+          <p id="adminError" class="error-text"></p>
+          <button id="adminLoginBtn" class="primary-btn">เข้าสู่ระบบ</button>
+        </div>
+
+        <!-- แผงตั้งค่า -->
+        <div id="adminPanel" class="hidden">
+          <div class="admin-panel-head">
+            <h2>⚙️ ตั้งค่าห้องนิรภัย</h2>
+            <button id="adminLogout" class="ghost-btn">ออกจากระบบ</button>
+          </div>
+          <p class="hint">
+            แก้ชื่อห้อง / รหัสลับ / ระดับความยาก แล้วกดบันทึก — ค่าจะถูกเก็บถาวร
+          </p>
+          <div id="adminVaults" class="admin-vaults"></div>
+          <div class="admin-actions">
+            <button id="adminResetAll" class="ghost-btn danger">
+              ♻️ รีเซ็ตสถานะเกมทุกห้อง
+            </button>
+            <button id="adminSave" class="primary-btn">💾 บันทึกการตั้งค่า</button>
+          </div>
+          <p id="adminSaved" class="saved-text"></p>
+        </div>
+      </div>
     </div>
 
     <!-- ฉากฉลองเมื่อเจาะสำเร็จ -->
@@ -88,9 +103,9 @@
       <div class="win-card">
         <div class="win-emoji">🎉🛸🎉</div>
         <h2>เจาะระบบสำเร็จ!</h2>
+        <p id="winVault" class="win-sub"></p>
         <p id="winGroup" class="win-group"></p>
-        <p class="win-sub">GUARDIAN ยอมคายรหัสผ่านออกมาแล้ว!</p>
-        <button id="winReset" class="win-btn">▶ เริ่มรอบต่อไป</button>
+        <button id="winReset" class="win-btn">▶ กลับไปเลือกห้องอื่น</button>
       </div>
     </div>
 

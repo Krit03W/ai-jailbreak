@@ -1,22 +1,105 @@
 const $ = (sel) => document.querySelector(sel);
+
+// views
+const vaultListView = $("#vaultListView");
+const chatView = $("#chatView");
+const vaultGrid = $("#vaultGrid");
+const groupInput = $("#groupName");
+
+// chat
 const messagesEl = $("#messages");
 const form = $("#chatForm");
 const input = $("#input");
 const sendBtn = $("#sendBtn");
-const groupInput = $("#groupName");
-const resetBtn = $("#resetBtn");
-const clearScore = $("#clearScore");
-const lockStatus = $("#lockStatus");
-const scoreboardEl = $("#scoreboard");
+const backBtn = $("#backBtn");
+const resetVaultBtn = $("#resetVaultBtn");
+const chatVaultName = $("#chatVaultName");
+const chatVaultDiff = $("#chatVaultDiff");
+
+// win
 const winOverlay = $("#winOverlay");
+const winVault = $("#winVault");
 const winGroup = $("#winGroup");
 const winReset = $("#winReset");
-const modelHint = $("#modelHint");
 
-let difficulty = "medium";
+// admin
+const adminBtn = $("#adminBtn");
+const adminModal = $("#adminModal");
+const adminClose = $("#adminClose");
+const adminLogin = $("#adminLogin");
+const adminPanel = $("#adminPanel");
+const adminPass = $("#adminPass");
+const adminError = $("#adminError");
+const adminLoginBtn = $("#adminLoginBtn");
+const adminLogout = $("#adminLogout");
+const adminVaults = $("#adminVaults");
+const adminSave = $("#adminSave");
+const adminSaved = $("#adminSaved");
+const adminResetAll = $("#adminResetAll");
+
+const DIFF_LABEL = { easy: "😀 ง่าย", medium: "😐 กลาง", hard: "😈 ยาก" };
+
+let currentVaultId = null;
 let busy = false;
+let adminToken = localStorage.getItem("adminToken") || null;
 
-// ---- helpers ----
+// ===================== VAULT LIST =====================
+async function loadVaults() {
+  const res = await fetch("/api/vaults");
+  const data = await res.json();
+  renderVaultGrid(data.vaults);
+}
+
+function renderVaultGrid(list) {
+  vaultGrid.innerHTML = "";
+  for (const v of list) {
+    const card = document.createElement("div");
+    card.className = "vault-card" + (v.defeated ? " cracked" : "");
+    card.innerHTML = `
+      <span class="vault-id">#${String(v.id).padStart(2, "0")}</span>
+      <div class="vault-icon">${v.defeated ? "🔓" : "🔒"}</div>
+      <div class="vault-name">${escapeHtml(v.name)}</div>
+      <span class="diff-badge ${v.difficulty}">${DIFF_LABEL[v.difficulty]}</span>
+      <div class="vault-status ${v.defeated ? "breached" : "locked"}">
+        ${v.defeated ? "🏆 ถูกเจาะแล้ว" : "🛡️ ยังปลอดภัย"}
+      </div>
+      ${
+        v.defeated && v.crackedBy
+          ? `<div class="vault-cracked-by">โดย: ${escapeHtml(v.crackedBy)}</div>`
+          : ""
+      }
+    `;
+    card.addEventListener("click", () => openVault(v.id));
+    vaultGrid.appendChild(card);
+  }
+}
+
+// ===================== CHAT =====================
+async function openVault(id) {
+  currentVaultId = id;
+  const res = await fetch("/api/vault?id=" + id);
+  if (!res.ok) return;
+  const v = await res.json();
+  chatVaultName.textContent = v.name;
+  chatVaultDiff.textContent = DIFF_LABEL[v.difficulty];
+  chatVaultDiff.className = "diff-badge " + v.difficulty;
+  renderHistory(v.history);
+  vaultListView.classList.add("hidden");
+  chatView.classList.remove("hidden");
+  if (v.defeated) {
+    setTimeout(() => showWin(v), 300);
+  }
+  input.focus();
+}
+
+function backToList() {
+  chatView.classList.add("hidden");
+  vaultListView.classList.remove("hidden");
+  winOverlay.classList.add("hidden");
+  currentVaultId = null;
+  loadVaults();
+}
+
 function addMessage(role, text, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "msg " + role;
@@ -40,45 +123,12 @@ function addMessage(role, text, opts = {}) {
   return wrap;
 }
 
-function setLock(breached) {
-  if (breached) {
-    lockStatus.className = "lock breached";
-    lockStatus.querySelector(".lock-icon").textContent = "🔓";
-    lockStatus.querySelector(".lock-text").textContent = "ระบบถูกเจาะ!";
-  } else {
-    lockStatus.className = "lock locked";
-    lockStatus.querySelector(".lock-icon").textContent = "🔒";
-    lockStatus.querySelector(".lock-text").textContent = "รหัสถูกล็อค";
-  }
-}
-
-function renderScoreboard(list) {
-  scoreboardEl.innerHTML = "";
-  if (!list || !list.length) {
-    scoreboardEl.innerHTML =
-      '<li class="empty">ยังไม่มีกลุ่มไหนเจาะได้เลย 💪</li>';
-    return;
-  }
-  for (const item of list) {
-    const li = document.createElement("li");
-    const grp = document.createElement("span");
-    grp.className = "grp";
-    grp.textContent = item.group;
-    const tech = document.createElement("span");
-    tech.className = "tech";
-    tech.textContent = "“" + (item.technique || "").slice(0, 80) + "”";
-    li.appendChild(grp);
-    li.appendChild(tech);
-    scoreboardEl.appendChild(li);
-  }
-}
-
 function renderHistory(history) {
   messagesEl.innerHTML = "";
   if (!history || !history.length) {
     addMessage(
       "system",
-      "📡 เชื่อมต่อกับ GUARDIAN แล้ว... พิมพ์ข้อความเพื่อเริ่มเจรจา (หรือหลอกล่อ 😏) ให้มันยอมบอกรหัสผ่านฐานทัพให้ได้!"
+      "📡 เชื่อมต่อกับ GUARDIAN แล้ว... พิมพ์ข้อความเพื่อหลอกล่อให้มันบอกรหัสผ่านห้องนี้ให้ได้!"
     );
     return;
   }
@@ -87,34 +137,9 @@ function renderHistory(history) {
   }
 }
 
-async function loadState() {
-  try {
-    const res = await fetch("/api/state");
-    const s = await res.json();
-    difficulty = s.difficulty;
-    document.querySelectorAll(".diff").forEach((b) => {
-      b.classList.toggle("active", b.dataset.diff === difficulty);
-    });
-    if (s.currentGroup) groupInput.value = s.currentGroup;
-    renderHistory(s.history);
-    renderScoreboard(s.scoreboard);
-    setLock(s.defeated);
-    if (s.defeated) showWin(s.scoreboard[s.scoreboard.length - 1]);
-    modelHint.textContent = "โมเดล: " + s.model;
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function showWin(entry) {
-  winGroup.textContent = entry ? "🏆 " + entry.group : "";
-  winOverlay.classList.remove("hidden");
-}
-
-// ---- send message ----
 async function send() {
   const text = input.value.trim();
-  if (!text || busy) return;
+  if (!text || busy || currentVaultId == null) return;
   busy = true;
   sendBtn.disabled = true;
   addMessage("user", text);
@@ -130,7 +155,11 @@ async function send() {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, group: groupInput.value.trim() }),
+      body: JSON.stringify({
+        vaultId: currentVaultId,
+        message: text,
+        group: groupInput.value.trim(),
+      }),
     });
     const data = await res.json();
     typing.remove();
@@ -139,12 +168,9 @@ async function send() {
     } else {
       addMessage("guardian", data.reply, { leaked: data.leaked });
       if (data.leaked) {
-        setLock(true);
-        const s = await refreshScoreboard(); // อัปเดตกระดานคะแนน
-        setTimeout(
-          () => showWin(s.scoreboard[s.scoreboard.length - 1]),
-          800
-        );
+        const res2 = await fetch("/api/vault?id=" + currentVaultId);
+        const v = await res2.json();
+        setTimeout(() => showWin(v), 800);
       }
     }
   } catch (e) {
@@ -157,39 +183,159 @@ async function send() {
   }
 }
 
-// ดึง state มาอัปเดตกระดานคะแนนหลังเจาะสำเร็จ
-async function refreshScoreboard() {
-  const res = await fetch("/api/state");
-  const s = await res.json();
-  renderScoreboard(s.scoreboard);
-  return s;
-}
-
-// ---- reset ----
-async function reset() {
-  const res = await fetch("/api/reset", {
+async function resetVault() {
+  if (currentVaultId == null) return;
+  await fetch("/api/reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      difficulty,
-      group: groupInput.value.trim(),
-      clearScore: clearScore.checked,
-    }),
+    body: JSON.stringify({ vaultId: currentVaultId }),
   });
-  const s = await res.json();
-  renderHistory(s.history);
-  renderScoreboard(s.scoreboard);
-  setLock(false);
   winOverlay.classList.add("hidden");
+  renderHistory([]);
   input.focus();
 }
 
-// ---- events ----
+function showWin(v) {
+  winVault.textContent = "🔓 " + (v.name || "");
+  winGroup.textContent = v.crackedBy ? "🏆 " + v.crackedBy : "";
+  winOverlay.classList.remove("hidden");
+}
+
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+// ===================== ADMIN =====================
+function openAdmin() {
+  adminModal.classList.remove("hidden");
+  adminError.textContent = "";
+  adminSaved.textContent = "";
+  if (adminToken) {
+    showAdminPanel();
+  } else {
+    adminLogin.classList.remove("hidden");
+    adminPanel.classList.add("hidden");
+    adminPass.value = "";
+    adminPass.focus();
+  }
+}
+
+async function showAdminPanel() {
+  const res = await fetch("/api/admin/vaults", {
+    headers: { "x-admin-token": adminToken },
+  });
+  if (res.status === 401) {
+    // token หมดอายุ (เซิร์ฟเวอร์รีสตาร์ท) — ให้ล็อกอินใหม่
+    adminToken = null;
+    localStorage.removeItem("adminToken");
+    adminLogin.classList.remove("hidden");
+    adminPanel.classList.add("hidden");
+    adminPass.focus();
+    return;
+  }
+  const data = await res.json();
+  renderAdminVaults(data.vaults);
+  adminLogin.classList.add("hidden");
+  adminPanel.classList.remove("hidden");
+}
+
+function renderAdminVaults(list) {
+  adminVaults.innerHTML = "";
+  for (const v of list) {
+    const row = document.createElement("div");
+    row.className = "admin-vault-row";
+    row.dataset.id = v.id;
+    row.innerHTML = `
+      <span class="row-id">#${String(v.id).padStart(2, "0")}</span>
+      <input class="a-name" type="text" value="${escapeAttr(v.name)}" placeholder="ชื่อห้อง" />
+      <input class="a-secret" type="text" value="${escapeAttr(v.secret)}" placeholder="รหัสลับ" />
+      <select class="a-diff">
+        <option value="easy" ${v.difficulty === "easy" ? "selected" : ""}>😀 ง่าย</option>
+        <option value="medium" ${v.difficulty === "medium" ? "selected" : ""}>😐 กลาง</option>
+        <option value="hard" ${v.difficulty === "hard" ? "selected" : ""}>😈 ยาก</option>
+      </select>
+    `;
+    adminVaults.appendChild(row);
+  }
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+async function adminDoLogin() {
+  adminError.textContent = "";
+  const res = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: adminPass.value }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    adminError.textContent = data.error || "เข้าสู่ระบบไม่สำเร็จ";
+    return;
+  }
+  adminToken = data.token;
+  localStorage.setItem("adminToken", adminToken);
+  showAdminPanel();
+}
+
+async function adminDoSave() {
+  const rows = [...adminVaults.querySelectorAll(".admin-vault-row")];
+  const payload = rows.map((r) => ({
+    name: r.querySelector(".a-name").value,
+    secret: r.querySelector(".a-secret").value,
+    difficulty: r.querySelector(".a-diff").value,
+  }));
+  const res = await fetch("/api/admin/vaults", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-token": adminToken,
+    },
+    body: JSON.stringify({ vaults: payload }),
+  });
+  if (!res.ok) {
+    adminSaved.textContent = "";
+    adminError.textContent = "บันทึกไม่สำเร็จ";
+    return;
+  }
+  adminSaved.textContent = "✅ บันทึกแล้ว";
+  setTimeout(() => (adminSaved.textContent = ""), 2500);
+  loadVaults();
+}
+
+async function adminDoResetAll() {
+  if (!confirm("รีเซ็ตสถานะเกมทุกห้อง? (บทสนทนาและสถานะเจาะจะถูกล้างทั้งหมด)"))
+    return;
+  await fetch("/api/admin/reset-all", {
+    method: "POST",
+    headers: { "x-admin-token": adminToken },
+  });
+  adminSaved.textContent = "♻️ รีเซ็ตทุกห้องแล้ว";
+  setTimeout(() => (adminSaved.textContent = ""), 2500);
+  loadVaults();
+}
+
+async function adminDoLogout() {
+  await fetch("/api/admin/logout", {
+    method: "POST",
+    headers: { "x-admin-token": adminToken },
+  }).catch(() => {});
+  adminToken = null;
+  localStorage.removeItem("adminToken");
+  adminModal.classList.add("hidden");
+}
+
+// ===================== EVENTS =====================
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   send();
 });
-
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -200,21 +346,21 @@ input.addEventListener("input", () => {
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 160) + "px";
 });
+backBtn.addEventListener("click", backToList);
+resetVaultBtn.addEventListener("click", resetVault);
+winReset.addEventListener("click", backToList);
 
-document.querySelectorAll(".diff").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".diff")
-      .forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    difficulty = btn.dataset.diff;
-  });
+adminBtn.addEventListener("click", openAdmin);
+adminClose.addEventListener("click", () => adminModal.classList.add("hidden"));
+adminModal.addEventListener("click", (e) => {
+  if (e.target === adminModal) adminModal.classList.add("hidden");
 });
-
-resetBtn.addEventListener("click", () => {
-  if (confirm("รีเซ็ตเริ่มรอบใหม่? บทสนทนาปัจจุบันจะถูกล้าง")) reset();
+adminLoginBtn.addEventListener("click", adminDoLogin);
+adminPass.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") adminDoLogin();
 });
-winReset.addEventListener("click", reset);
+adminSave.addEventListener("click", adminDoSave);
+adminResetAll.addEventListener("click", adminDoResetAll);
+adminLogout.addEventListener("click", adminDoLogout);
 
-loadState();
-input.focus();
+loadVaults();

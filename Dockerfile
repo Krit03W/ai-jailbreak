@@ -15,7 +15,7 @@ EXPOSE 3000
 
 # healthcheck ให้ Dokploy/Traefik รู้ว่าแอปพร้อมใช้งาน
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/api/state >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/vaults >/dev/null 2>&1 || exit 1
 
 # รันตรง ๆ (env มาจาก Dokploy ไม่ต้องใช้ไฟล์ .env)
 CMD ["node", "server.js"]
