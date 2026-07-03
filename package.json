@@ -1,0 +1,12 @@
+{
+  "name": "ai-jailbreak-game",
+  "version": "1.0.0",
+  "description": "เกมแฮก AI ผู้พิทักษ์ฐานทัพดาวอังคาร — กิจกรรมสอน AI Prompt Jailbreak",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

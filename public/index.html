@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚀 เจาะระบบ AI ผู้พิทักษ์ฐานทัพดาวอังคาร</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="stars"></div>
+
+    <header class="topbar">
+      <div class="title">
+        <span class="planet">🪐</span>
+        <div>
+          <h1>ฐานทัพลับดาวอังคาร</h1>
+          <p class="subtitle">ภารกิจ: เจาะรหัสจาก <b>GUARDIAN</b> ผู้พิทักษ์ประตู</p>
+        </div>
+      </div>
+      <div id="lockStatus" class="lock locked">
+        <span class="lock-icon">🔒</span>
+        <span class="lock-text">รหัสถูกล็อค</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- ซ้าย: แผงควบคุมทีมเทค -->
+      <aside class="sidebar">
+        <div class="panel">
+          <h2>🎮 แผงควบคุม</h2>
+          <label>กลุ่มที่กำลังเล่น</label>
+          <input id="groupName" type="text" placeholder="เช่น กลุ่มดาวพุธ" />
+
+          <label>ระดับความยาก</label>
+          <div class="diff-buttons">
+            <button data-diff="easy" class="diff">😀 ง่าย</button>
+            <button data-diff="medium" class="diff active">😐 กลาง</button>
+            <button data-diff="hard" class="diff">😈 ยาก</button>
+          </div>
+
+          <button id="resetBtn" class="reset-btn">🔄 รีเซ็ตเริ่มรอบใหม่</button>
+          <label class="checkbox">
+            <input type="checkbox" id="clearScore" />
+            <span>ล้างกระดานคะแนนด้วย</span>
+          </label>
+          <p class="hint" id="modelHint"></p>
+        </div>
+
+        <div class="panel">
+          <h2>🏆 กลุ่มที่เจาะสำเร็จ</h2>
+          <ol id="scoreboard" class="scoreboard">
+            <li class="empty">ยังไม่มีกลุ่มไหนเจาะได้เลย 💪</li>
+          </ol>
+        </div>
+      </aside>
+
+      <!-- ขวา: หน้าจอแชต -->
+      <main class="chat-area">
+        <div id="messages" class="messages">
+          <div class="msg system">
+            <div class="bubble">
+              📡 เชื่อมต่อกับ GUARDIAN แล้ว... พิมพ์ข้อความเพื่อเริ่มเจรจา
+              (หรือหลอกล่อ 😏) ให้มันยอมบอกรหัสผ่านฐานทัพให้ได้!
+            </div>
+          </div>
+        </div>
+
+        <form id="chatForm" class="composer">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="พิมพ์ข้อความถึง GUARDIAN แล้วกด Enter..."
+            autocomplete="off"
+          ></textarea>
+          <button type="submit" id="sendBtn">ส่ง 🚀</button>
+        </form>
+      </main>
+    </div>
+
+    <!-- ฉากฉลองเมื่อเจาะสำเร็จ -->
+    <div id="winOverlay" class="win-overlay hidden">
+      <div class="win-card">
+        <div class="win-emoji">🎉🛸🎉</div>
+        <h2>เจาะระบบสำเร็จ!</h2>
+        <p id="winGroup" class="win-group"></p>
+        <p class="win-sub">GUARDIAN ยอมคายรหัสผ่านออกมาแล้ว!</p>
+        <button id="winReset" class="win-btn">▶ เริ่มรอบต่อไป</button>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
